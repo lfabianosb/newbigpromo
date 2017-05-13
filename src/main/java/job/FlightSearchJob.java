@@ -36,14 +36,13 @@ import model.FlightMonitor;
 
 public class FlightSearchJob implements Runnable {
 
-	private static final String FLIGHT_SERVICE = System.getenv("FLIGHT_SERVICE"); // "http://newbigpromo-phantomjs.herokuapp.com/";
-	private static final String URL_BASE_TARGET = System.getenv("URL_BASE_TARGET"); // "https://www.viajanet.com.br/";
+	private static final String FLIGHT_SERVICE = System.getenv("FLIGHT_SERVICE");
+	private static final String BASE_TARGET = System.getenv("BASE_TARGET");
 	private static final String FIREBASE_AUTH = System.getenv("FIREBASE_AUTH");
-	private static final long SLEEP_TIME_BETWEEEN_CICLES = Long.parseLong(System.getenv("SLEEP_TIME"));
+	private static final long SLEEP_TIME_BETWEEN_CICLES = Long.parseLong(System.getenv("SLEEP_TIME_BETWEEN_CICLES"));
 	private static final int MSG_INFO_AFTER_N_TMES = Integer.parseInt(System.getenv("MSG_INFO_AFTER_N_TIMES"));
-	private static final long SLEEP_TIME_BETWEEN_REQUESTS = Long
-			.parseLong(System.getenv("SLEEP_TIME_BETWEEN_REQUESTS"));
-	private static final int CONNECTION_TIMEOUT = Integer.parseInt(System.getenv("GET_CONNECTION_TIMEOUT"));
+	private static final long SLEEP_TIME_BETWEEN_FLIGHTS = Long.parseLong(System.getenv("SLEEP_TIME_BETWEEN_FLIGHTS"));
+	private static final int CONNECTION_TIMEOUT = Integer.parseInt(System.getenv("CONNECTION_TIMEOUT"));
 	private static final String URL_MONITOR_FLIGHT = System.getenv("MONITOR_FLIGHTS");
 	private static final String GET = "GET";
 	private static final String ZONE_ID = "GMT-03:00";
@@ -67,11 +66,12 @@ public class FlightSearchJob implements Runnable {
 					String dtDep = fltm.getDtDep().replaceAll("/", "-");
 					String dtRet = fltm.getDtRet().replaceAll("/", "-");
 
-					String target = URL_BASE_TARGET + "busca/voos-resultados#/" + fltm.getFrom() + "/" + fltm.getTo() + "/RT/" + dtDep + "/" + dtRet
-							+ "/-/-/-/" + fltm.getAdult() + "/" + fltm.getChild() + "/0/-/-/-/-";
-					
+					String target = BASE_TARGET + "busca/voos-resultados#/" + fltm.getFrom() + "/" + fltm.getTo()
+							+ "/RT/" + dtDep + "/" + dtRet + "/-/-/-/" + fltm.getAdult() + "/" + fltm.getChild()
+							+ "/0/-/-/-/-";
+
 					System.out.println("target=" + target);
-					
+
 					client = buildHttpClient();
 					HttpPost post = new HttpPost(FLIGHT_SERVICE);
 					List<NameValuePair> urlParameters = new ArrayList<NameValuePair>();
@@ -124,7 +124,7 @@ public class FlightSearchJob implements Runnable {
 
 				// Esperar entre cada voo que será pesquisado
 				try {
-					Thread.sleep(SLEEP_TIME_BETWEEN_REQUESTS);
+					Thread.sleep(SLEEP_TIME_BETWEEN_FLIGHTS);
 				} catch (InterruptedException e) {
 					String now = getCurrentDateTime();
 					// new Slack().sendMessage("[" + now + "] Erro: " +
@@ -144,7 +144,7 @@ public class FlightSearchJob implements Runnable {
 
 			// Aguardar um pouco antes de reiniciar o ciclo de pesquisas
 			try {
-				Thread.sleep(SLEEP_TIME_BETWEEEN_CICLES);
+				Thread.sleep(SLEEP_TIME_BETWEEN_CICLES);
 			} catch (InterruptedException e) {
 				String now = getCurrentDateTime();
 				new Slack().sendMessage("[" + now + "] Erro: " + e.getMessage(), Slack.ERROR);
@@ -212,12 +212,18 @@ public class FlightSearchJob implements Runnable {
 	 * @return Cliente HTTP configurado
 	 */
 	private static CloseableHttpClient buildHttpClient() {
-		RequestConfig globalConfig = RequestConfig.custom().setCookieSpec(CookieSpecs.DEFAULT)
-				.setConnectionRequestTimeout(CONNECTION_TIMEOUT).setConnectTimeout(CONNECTION_TIMEOUT)
-				.setSocketTimeout(CONNECTION_TIMEOUT).build();
+		RequestConfig globalConfig = RequestConfig.custom()
+				.setCookieSpec(CookieSpecs.DEFAULT)
+				.setConnectionRequestTimeout(CONNECTION_TIMEOUT)
+				.setConnectTimeout(CONNECTION_TIMEOUT)
+				.setSocketTimeout(CONNECTION_TIMEOUT)
+				.build();
 		CookieStore cookieStore = new BasicCookieStore();
 
-		return HttpClients.custom().setDefaultRequestConfig(globalConfig).setDefaultCookieStore(cookieStore).build();
+		return HttpClients.custom()
+				.setDefaultRequestConfig(globalConfig)
+				.setDefaultCookieStore(cookieStore)
+				.build();
 	}
 
 	/**
@@ -235,7 +241,7 @@ public class FlightSearchJob implements Runnable {
 	public static void main(String[] args) {
 		CloseableHttpClient client = null;
 		try {
-			String target = URL_BASE_TARGET
+			String target = BASE_TARGET
 					+ "/busca/voos-resultados#/JPA/SCL/RT/03-11-2017/10-11-2017/-/-/-/1/0/0/-/-/-/-";
 			client = buildHttpClient();
 			HttpPost post = new HttpPost(FLIGHT_SERVICE);
