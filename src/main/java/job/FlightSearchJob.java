@@ -102,6 +102,9 @@ public class FlightSearchJob implements Runnable {
 
 						System.out.println(" [" + now + "]: Menor preco: " + betterFlights[0].getPrc()[0]);
 
+						System.out
+								.println(" [" + now + "]: Menor preco 2: " + getCurrency(betterFlights[0].getPrc()[0]));
+
 						// if (flight.getPrice() < fltm.getAlertPrice()) {
 						// Slack slack = new Slack();
 						// String resp = slack.sendMessage(
@@ -240,6 +243,24 @@ public class FlightSearchJob implements Runnable {
 		LocalDateTime now = LocalDateTime.now(zoneId);
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 		return now.format(formatter);
+	}
+
+	/**
+	 * Converter o preço passado como parâmetro para o tipo float
+	 * 
+	 * @param price
+	 * @return
+	 */
+	private float getCurrency(String price) {
+		float retorno = 100000;
+
+		String tmp = price.substring(3);
+		try {
+			retorno = Float.parseFloat(tmp.replace(".", ""));
+		} catch (NumberFormatException e) {
+		}
+
+		return retorno;
 	}
 
 }
