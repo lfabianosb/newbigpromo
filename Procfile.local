@@ -1,0 +1,1 @@
+worker: target\bin\worker.bat
