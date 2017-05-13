@@ -31,7 +31,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import messenger.Slack;
-import model.Flight;
+import model.BetterFlight;
 import model.FlightMonitor;
 
 public class FlightSearchJob implements Runnable {
@@ -96,7 +96,11 @@ public class FlightSearchJob implements Runnable {
 						System.err.println("Ocorreu o seguinte erro: " + codeResponse + " - " + body);
 					} else {
 
-						System.out.println(" [" + now + "]: " + body + "\n\n");
+						BetterFlight[] betterFlights = new Gson().fromJson(body, BetterFlight[].class);
+
+						System.out.println(" [" + now + "]: " + body);
+
+						System.out.println(" [" + now + "]: Menor preco: " + betterFlights[0].getPrc()[0]);
 
 						// if (flight.getPrice() < fltm.getAlertPrice()) {
 						// Slack slack = new Slack();
@@ -236,46 +240,6 @@ public class FlightSearchJob implements Runnable {
 		LocalDateTime now = LocalDateTime.now(zoneId);
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 		return now.format(formatter);
-	}
-
-	public static void main(String[] args) {
-		CloseableHttpClient client = null;
-		try {
-			String target = BASE_TARGET
-					+ "/busca/voos-resultados#/JPA/SCL/RT/03-11-2017/10-11-2017/-/-/-/1/0/0/-/-/-/-";
-			client = buildHttpClient();
-			HttpPost post = new HttpPost(FLIGHT_SERVICE);
-			List<NameValuePair> urlParameters = new ArrayList<NameValuePair>();
-			urlParameters.add(new BasicNameValuePair("target", target));
-			post.setEntity(new UrlEncodedFormEntity(urlParameters));
-			HttpResponse response = client.execute(post);
-			String body = EntityUtils.toString(response.getEntity(), CHARSET);
-
-			// TODO O codigo do retorno sempre será 200
-			// Se houver 'ERRO' na mensagem de retorno, então tratar como erro
-
-			int codeResponse = response.getStatusLine().getStatusCode();
-			boolean isError = codeResponse > 400;
-
-			if (isError) {
-				System.err
-						.println("Ocorreu o seguinte erro: " + response + "\nResponse: " + codeResponse + " - " + body);
-			} else {
-				Flight flight = new Gson().fromJson(response.toString(), Flight.class);
-
-				System.out.println(flight);
-			}
-		} catch (Exception e) {
-			System.err.println("Erro: " + e.getMessage());
-			e.printStackTrace();
-		} finally {
-			if (client != null) {
-				try {
-					client.close();
-				} catch (IOException e) {
-				}
-			}
-		}
 	}
 
 }
