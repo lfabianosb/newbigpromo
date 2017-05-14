@@ -89,7 +89,8 @@ public class FlightSearchJob implements Runnable {
 					} else {
 						BetterFlight[] betterFlights = new Gson().fromJson(body, BetterFlight[].class);
 						float lowerPrice = getFloat(betterFlights[0].getPrc()[0]);
-						double priceWithoutTax = lowerPrice * .92;
+						//TODO Buscar o valor exato
+						double priceWithoutTax = lowerPrice * .9; //Valor aproximado
 						
 						System.out.println(" [" + now + "]: " + body);
 						System.out.println(" [" + now + "]: Menor preco sem taxa: " + priceWithoutTax);
@@ -127,6 +128,8 @@ public class FlightSearchJob implements Runnable {
 					System.err.println("[" + now + "] Erro: " + e.getMessage());
 				}
 			}
+
+			System.out.println("Ciclo " + counter);
 
 			if ((counter % MSG_INFO_AFTER_N_TMES) == 0) {
 				new Slack().sendMessage("[" + getCurrentDateTime() + "] I'm Working too!", Slack.INFO);
