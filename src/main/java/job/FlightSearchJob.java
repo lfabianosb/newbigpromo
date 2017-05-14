@@ -95,29 +95,29 @@ public class FlightSearchJob implements Runnable {
 						// + "\nURL: " + target, Slack.ERROR);
 						System.err.println("Ocorreu o seguinte erro: " + codeResponse + " - " + body);
 					} else {
-
 						BetterFlight[] betterFlights = new Gson().fromJson(body, BetterFlight[].class);
-
+						float lowerPrice = getFloat(betterFlights[0].getPrc()[0]);
+						double priceWithoutTax = lowerPrice * .92;
+						
 						System.out.println(" [" + now + "]: " + body);
+						System.out.println(" [" + now + "]: Menor preco: " + lowerPrice);
+						System.out.println(" [" + now + "]: Menor preco sem taxa: " + priceWithoutTax);
 
-						System.out.println(" [" + now + "]: Menor preco: " + betterFlights[0].getPrc()[0]);
+						if (fltm.getAlertPrice() > priceWithoutTax) {
+							String msg = "[" + now + "] Comprar voo de " + fltm.getFrom() + " para " + fltm.getTo() 
+									+ " da " + betterFlights[0].getCia() + " por aproximadamente " + priceWithoutTax 
+									+ " no período de " + fltm.getDtDep() + " a " + fltm.getDtRet();
 
-						System.out
-								.println(" [" + now + "]: Menor preco 2: " + getCurrency(betterFlights[0].getPrc()[0]));
+							System.out.println("msg=" + msg);
 
-						// if (flight.getPrice() < fltm.getAlertPrice()) {
-						// Slack slack = new Slack();
-						// String resp = slack.sendMessage(
-						// "[" + now + "] Comprar voo " + flight, Slack.ALERT);
-						//
-						// System.out.println("Resposta da mensagem enviada para
-						// o Slack: " + resp);
-						// }
+							Slack slack = new Slack();
+							String resp = slack.sendMessage(msg, Slack.ALERT);
+							System.out.println("Resposta da mensagem enviada pelo Slack: " + resp);
+						}
 					}
 				} catch (Exception e) {
-					// Slack slack = new Slack();
-					// slack.sendMessage("Erro: " + e.getMessage(),
-					// Slack.ERROR);
+					Slack slack = new Slack();
+					slack.sendMessage("Erro: " + e.getMessage(), Slack.ERROR);
 					System.err.println("Erro: " + e.getMessage());
 					e.printStackTrace();
 				} finally {
@@ -129,13 +129,11 @@ public class FlightSearchJob implements Runnable {
 					}
 				}
 
-				// Esperar entre cada voo que será pesquisado
 				try {
 					Thread.sleep(SLEEP_TIME_BETWEEN_FLIGHTS);
 				} catch (InterruptedException e) {
 					String now = getCurrentDateTime();
-					// new Slack().sendMessage("[" + now + "] Erro: " +
-					// e.getMessage(), Slack.ERROR);
+					new Slack().sendMessage("[" + now + "] Erro: " + e.getMessage(), Slack.ERROR);
 					System.err.println("[" + now + "] Erro: " + e.getMessage());
 					e.printStackTrace();
 				}
@@ -251,7 +249,7 @@ public class FlightSearchJob implements Runnable {
 	 * @param price
 	 * @return
 	 */
-	private float getCurrency(String price) {
+	private float getFloat(String price) {
 		float retorno = 100000;
 
 		String tmp = price.substring(3);
