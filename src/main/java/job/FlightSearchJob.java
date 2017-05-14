@@ -100,7 +100,6 @@ public class FlightSearchJob implements Runnable {
 						double priceWithoutTax = lowerPrice * .92;
 						
 						System.out.println(" [" + now + "]: " + body);
-						System.out.println(" [" + now + "]: Menor preco: " + lowerPrice);
 						System.out.println(" [" + now + "]: Menor preco sem taxa: " + priceWithoutTax);
 
 						if (fltm.getAlertPrice() > priceWithoutTax) {
@@ -144,7 +143,7 @@ public class FlightSearchJob implements Runnable {
 			}
 
 			// Reset counter
-			if (counter++ > 1000)
+			if (counter++ > 10000)
 				counter = 1;
 
 			// Aguardar um pouco antes de reiniciar o ciclo de pesquisas
