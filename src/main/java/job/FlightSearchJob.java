@@ -60,12 +60,10 @@ public class FlightSearchJob implements Runnable {
 			CloseableHttpClient client = null;
 			for (FlightMonitor fltm : flights) {
 				try {
-
 					System.out.println("FlightMonitor: " + fltm);
 
 					String dtDep = fltm.getDtDep().replaceAll("/", "-");
 					String dtRet = fltm.getDtRet().replaceAll("/", "-");
-
 					String target = BASE_TARGET + "busca/voos-resultados#/" + fltm.getFrom() + "/" + fltm.getTo()
 							+ "/RT/" + dtDep + "/" + dtRet + "/-/-/-/" + fltm.getAdult() + "/" + fltm.getChild()
 							+ "/0/-/-/-/-";
@@ -79,20 +77,14 @@ public class FlightSearchJob implements Runnable {
 					post.setEntity(new UrlEncodedFormEntity(urlParameters));
 					HttpResponse response = client.execute(post);
 					String body = EntityUtils.toString(response.getEntity(), CHARSET);
-
-					// TODO O codigo do retorno sempre será 200
-					// Se houver 'ERRO' na mensagem de retorno, então tratar
-					// como erro
-
 					int codeResponse = response.getStatusLine().getStatusCode();
 					boolean isError = codeResponse > 400;
 
 					String now = getCurrentDateTime();
 
 					if (isError) {
-						// new Slack().sendMessage("[" + now + "] Ocorreu o
-						// seguinte erro: " + codeResponse + " - " + body
-						// + "\nURL: " + target, Slack.ERROR);
+						new Slack().sendMessage("[" + now + "] Ocorreu o seguinte erro: " + codeResponse + " - " 
+								+ body + "\nURL: " + target, Slack.ERROR);
 						System.err.println("Ocorreu o seguinte erro: " + codeResponse + " - " + body);
 					} else {
 						BetterFlight[] betterFlights = new Gson().fromJson(body, BetterFlight[].class);
@@ -118,7 +110,6 @@ public class FlightSearchJob implements Runnable {
 					Slack slack = new Slack();
 					slack.sendMessage("Erro: " + e.getMessage(), Slack.ERROR);
 					System.err.println("Erro: " + e.getMessage());
-					e.printStackTrace();
 				} finally {
 					if (client != null) {
 						try {
@@ -134,7 +125,6 @@ public class FlightSearchJob implements Runnable {
 					String now = getCurrentDateTime();
 					new Slack().sendMessage("[" + now + "] Erro: " + e.getMessage(), Slack.ERROR);
 					System.err.println("[" + now + "] Erro: " + e.getMessage());
-					e.printStackTrace();
 				}
 			}
 
