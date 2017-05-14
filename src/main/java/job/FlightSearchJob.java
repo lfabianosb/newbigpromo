@@ -139,7 +139,7 @@ public class FlightSearchJob implements Runnable {
 			}
 
 			if ((counter % MSG_INFO_AFTER_N_TMES) == 0) {
-				new Slack().sendMessage("[" + getCurrentDateTime() + "] I'm Working!", Slack.INFO);
+				new Slack().sendMessage("[" + getCurrentDateTime() + "] I'm Working too!", Slack.INFO);
 			}
 
 			// Reset counter
