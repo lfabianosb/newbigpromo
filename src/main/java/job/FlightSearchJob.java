@@ -92,19 +92,19 @@ public class FlightSearchJob implements Runnable {
 						//TODO Buscar o valor exato
 						double priceWithoutTax = lowerPrice * .9; //Valor aproximado
 						
-						System.out.println(" [" + now + "]: " + body);
-						System.out.println(" [" + now + "]: Menor preco sem taxa: " + priceWithoutTax);
+						System.out.println("[" + now + "] " + body);
+						System.out.println("[" + now + "] Menor preco sem taxa: " + priceWithoutTax);
 
 						if (fltm.getAlertPrice() > priceWithoutTax) {
 							String msg = "[" + now + "] Comprar voo de " + fltm.getFrom() + " para " + fltm.getTo() 
 									+ " da " + betterFlights[0].getCia() + " por aproximadamente " + priceWithoutTax 
 									+ " no período de " + fltm.getDtDep() + " a " + fltm.getDtRet();
 
-							System.out.println("msg=" + msg);
+							System.out.println("[" + now + "] " + msg);
 
 							Slack slack = new Slack();
 							String resp = slack.sendMessage(msg, Slack.ALERT);
-							System.out.println("Resposta da mensagem enviada pelo Slack: " + resp);
+							System.out.println("[" + now + "] Resposta da mensagem enviada pelo Slack: " + resp);
 						}
 					}
 				} catch (Exception e) {
@@ -129,10 +129,11 @@ public class FlightSearchJob implements Runnable {
 				}
 			}
 
-			System.out.println("Ciclo " + counter);
+			String now = getCurrentDateTime();
+			System.out.println("[" + now + "] Ciclo " + counter);
 
 			if ((counter % MSG_INFO_AFTER_N_TMES) == 0) {
-				new Slack().sendMessage("[" + getCurrentDateTime() + "] I'm Working too!", Slack.INFO);
+				new Slack().sendMessage("[" + now + "] I'm working too!", Slack.INFO);
 			}
 
 			// Reset counter
@@ -143,10 +144,8 @@ public class FlightSearchJob implements Runnable {
 			try {
 				Thread.sleep(SLEEP_TIME_BETWEEN_CICLES);
 			} catch (InterruptedException e) {
-				String now = getCurrentDateTime();
 				new Slack().sendMessage("[" + now + "] Erro: " + e.getMessage(), Slack.ERROR);
 				System.err.println("[" + now + "] Erro: " + e.getMessage());
-				e.printStackTrace();
 			}
 		}
 
