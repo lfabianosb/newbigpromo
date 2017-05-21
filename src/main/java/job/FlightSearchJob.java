@@ -64,9 +64,10 @@ public class FlightSearchJob implements Runnable {
 
 					String dtDep = fltm.getDtDep().replaceAll("/", "-");
 					String dtRet = fltm.getDtRet().replaceAll("/", "-");
+					String nonStop = fltm.isNonStop() ? "NS" : "-";
 					String target = BASE_TARGET + "busca/voos-resultados#/" + fltm.getFrom() + "/" + fltm.getTo()
-							+ "/RT/" + dtDep + "/" + dtRet + "/-/-/-/" + fltm.getAdult() + "/" + fltm.getChild()
-							+ "/0/-/-/-/-";
+							+ "/RT/" + dtDep + "/" + dtRet + "/-/-/-/" + fltm.getAdult() + "/" + fltm.getChild() + "/0/"
+							+ nonStop + "/-/-/-";
 
 					System.out.println("target=" + target);
 
@@ -83,21 +84,22 @@ public class FlightSearchJob implements Runnable {
 					String now = getCurrentDateTime();
 
 					if (isError) {
-						new Slack().sendMessage("[" + now + "] Ocorreu o seguinte erro: " + codeResponse + " - " 
-								+ body + "\nURL: " + target, Slack.ERROR);
+						new Slack().sendMessage("[" + now + "] Ocorreu o seguinte erro: " + codeResponse + " - " + body
+								+ "\nURL: " + target, Slack.ERROR);
 						System.err.println("Ocorreu o seguinte erro: " + codeResponse + " - " + body);
 					} else {
 						BetterFlight[] betterFlights = new Gson().fromJson(body, BetterFlight[].class);
 						float lowerPrice = getFloat(betterFlights[0].getPrc()[0]);
-						//TODO Buscar o valor exato
-						double priceWithoutTax = lowerPrice * .9; //Valor aproximado
 						
+						// TODO Buscar o valor exato
+						double priceWithoutTax = lowerPrice * .9; // Valor aproximado
+
 						System.out.println("[" + now + "] " + body);
 						System.out.println("[" + now + "] Menor preco sem taxa: " + priceWithoutTax);
 
 						if (fltm.getAlertPrice() > priceWithoutTax) {
-							String msg = "[" + now + "] Comprar voo de " + fltm.getFrom() + " para " + fltm.getTo() 
-									+ " da " + betterFlights[0].getCia() + " por aproximadamente " + priceWithoutTax 
+							String msg = "[" + now + "] Comprar voo de " + fltm.getFrom() + " para " + fltm.getTo()
+									+ " da " + betterFlights[0].getCia() + " por aproximadamente " + priceWithoutTax
 									+ " no período de " + fltm.getDtDep() + " a " + fltm.getDtRet();
 
 							System.out.println("[" + now + "] " + msg);

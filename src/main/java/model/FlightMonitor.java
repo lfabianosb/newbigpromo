@@ -7,12 +7,17 @@ public class FlightMonitor {
 	private String dtRet;
 	private int adult;
 	private int child;
+	private boolean nonStop = false;
 	private double alertPrice;
 
 	public FlightMonitor() {
 	}
 
-	public FlightMonitor(String from, String to, String dtDep, String dtRet, int adult, int child,
+	public FlightMonitor(String from, String to, String dtDep, String dtRet, int adult, int child, double alertPrice) {
+		this(from, to, dtDep, dtRet, adult, child, false, alertPrice);
+	}
+
+	public FlightMonitor(String from, String to, String dtDep, String dtRet, int adult, int child, boolean nonStop,
 			double alertPrice) {
 		this.setFrom(from);
 		this.setTo(to);
@@ -20,6 +25,7 @@ public class FlightMonitor {
 		this.setDtRet(dtRet);
 		this.setAdult(adult);
 		this.setChild(child);
+		this.setNonStop(nonStop);
 		this.setAlertPrice(alertPrice);
 	}
 
@@ -71,6 +77,14 @@ public class FlightMonitor {
 		this.child = child;
 	}
 
+	public boolean isNonStop() {
+		return nonStop;
+	}
+
+	public void setNonStop(boolean nonStop) {
+		this.nonStop = nonStop;
+	}
+
 	public double getAlertPrice() {
 		return alertPrice;
 	}
@@ -82,7 +96,7 @@ public class FlightMonitor {
 	@Override
 	public String toString() {
 		return getFrom() + ", " + getTo() + ", " + getDtDep() + ", " + getDtRet() + ", " + getAdult() + ", "
-				+ getChild() + ", " + getAlertPrice();
+				+ getChild() + ", " + isNonStop() + ", " + getAlertPrice();
 	}
 
 }
