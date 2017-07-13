@@ -31,7 +31,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import messenger.Slack;
-import model.BetterFlight;
+import model.Flight;
 import model.FlightMonitor;
 
 public class FlightSearchJob implements Runnable {
@@ -88,8 +88,13 @@ public class FlightSearchJob implements Runnable {
 								+ "\nURL: " + target, Slack.ERROR);
 						System.err.println("Ocorreu o seguinte erro: " + codeResponse + " - " + body);
 					} else {
-						BetterFlight[] betterFlights = new Gson().fromJson(body, BetterFlight[].class);
-						float lowerPrice = getFloat(betterFlights[0].getPrc()[0]);
+						//Para o serviço bigpromo-phantomjs
+//						BetterFlight[] betterFlights = new Gson().fromJson(body, BetterFlight[].class);
+//						float lowerPrice = getFloat(betterFlights[0].getPrc()[0]);
+						
+						//Para o serviço bigpromo-casperjs
+						Flight betterFlight = new Gson().fromJson(body, Flight.class);
+						float lowerPrice = getFloat(betterFlight.getPrice());
 						
 						// TODO Buscar o valor exato
 						double priceWithoutTax = lowerPrice * .9; // Valor aproximado
@@ -99,7 +104,7 @@ public class FlightSearchJob implements Runnable {
 
 						if (fltm.getAlertPrice() > priceWithoutTax) {
 							String msg = "[" + now + "] Comprar voo de " + fltm.getFrom() + " para " + fltm.getTo()
-									+ " da " + betterFlights[0].getCia() + " por aproximadamente " + priceWithoutTax
+									+ " da " + betterFlight.getCia() + " por aproximadamente " + priceWithoutTax
 									+ " no período de " + fltm.getDtDep() + " a " + fltm.getDtRet();
 
 							System.out.println("[" + now + "] " + msg);
