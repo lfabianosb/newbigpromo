@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +34,7 @@ import com.google.gson.JsonParser;
 
 import messenger.Slack;
 import model.Flight;
-import model.FlightMonitor;
+import model.NewFlightMonitor;
 
 public class FlightSearchJob implements Runnable {
 
@@ -56,62 +58,91 @@ public class FlightSearchJob implements Runnable {
 
 		int counter = 1;
 		while (true) {
-			List<FlightMonitor> flights = checkFlights();
+			List<NewFlightMonitor> flights = checkFlights();
 			CloseableHttpClient client = null;
-			for (FlightMonitor fltm : flights) {
+			for (NewFlightMonitor fm : flights) {
 				try {
-					System.out.println("FlightMonitor: " + fltm);
+					System.out.println("NewFlightMonitor: " + fm);
+					
+					DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+					
+					LocalDate start = LocalDate.parse(fm.getDtStart(), dtf);
+					LocalDate end = LocalDate.parse(fm.getDtEnd(), dtf);
+					int minDays = fm.getMinDays();
+					int maxDays = fm.getMaxDays();
+					
+					if (start.plusDays(maxDays).isAfter(end)) {
+						System.err.println("Intervalo maior que data final");
+						continue;
+					}
+					
+					int diff = maxDays - minDays;
+					int period = (int)ChronoUnit.DAYS.between(start, end) - minDays;
+					for(int i=0; i<=period; i++) {
+						for(int j=0; j<=diff; j++) {
+							LocalDate newStart = start.plusDays(i);
+							LocalDate newEnd = newStart.plusDays(minDays + j);
+							
+							if (!newEnd.isAfter(end)) {
+								
+								DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+								
+								String dtDep = newStart.format(formatter);
+								String dtRet = newEnd.format(formatter);
+								String nonStop = fm.isNonStop() ? "NS" : "-";
+								String target = BASE_TARGET + "busca/voos-resultados#/" + fm.getFrom() + "/" + fm.getTo()
+										+ "/RT/" + dtDep + "/" + dtRet + "/-/-/-/" + fm.getAdult() + "/" + fm.getChild() + "/0/"
+										+ nonStop + "/-/-/-";
 
-					String dtDep = fltm.getDtDep().replaceAll("/", "-");
-					String dtRet = fltm.getDtRet().replaceAll("/", "-");
-					String nonStop = fltm.isNonStop() ? "NS" : "-";
-					String target = BASE_TARGET + "busca/voos-resultados#/" + fltm.getFrom() + "/" + fltm.getTo()
-							+ "/RT/" + dtDep + "/" + dtRet + "/-/-/-/" + fltm.getAdult() + "/" + fltm.getChild() + "/0/"
-							+ nonStop + "/-/-/-";
+								System.out.println("target=" + target);
 
-					System.out.println("target=" + target);
+								client = buildHttpClient();
+								HttpPost post = new HttpPost(FLIGHT_SERVICE);
+								List<NameValuePair> urlParameters = new ArrayList<NameValuePair>();
+								urlParameters.add(new BasicNameValuePair("target", target));
+								post.setEntity(new UrlEncodedFormEntity(urlParameters));
+								HttpResponse response = client.execute(post);
+								String body = EntityUtils.toString(response.getEntity(), CHARSET);
+								int codeResponse = response.getStatusLine().getStatusCode();
+								boolean isError = codeResponse > 400;
 
-					client = buildHttpClient();
-					HttpPost post = new HttpPost(FLIGHT_SERVICE);
-					List<NameValuePair> urlParameters = new ArrayList<NameValuePair>();
-					urlParameters.add(new BasicNameValuePair("target", target));
-					post.setEntity(new UrlEncodedFormEntity(urlParameters));
-					HttpResponse response = client.execute(post);
-					String body = EntityUtils.toString(response.getEntity(), CHARSET);
-					int codeResponse = response.getStatusLine().getStatusCode();
-					boolean isError = codeResponse > 400;
+								String now = getCurrentDateTime();
 
-					String now = getCurrentDateTime();
+								if (isError) {
+									new Slack().sendMessage("[" + now + "] Ocorreu o seguinte erro: " + codeResponse + " - " + body
+											+ "\nURL: " + target, Slack.ERROR);
+									System.err.println("Ocorreu o seguinte erro: " + codeResponse + " - " + body);
+								} else {
+									Flight betterFlight = new Gson().fromJson(body, Flight.class);
+									float lowerPrice = getFloat(betterFlight.getPrice());
+									
+									// TODO Buscar o valor exato
+									double priceWithoutTax = lowerPrice * .9; // Valor aproximado
 
-					if (isError) {
-						new Slack().sendMessage("[" + now + "] Ocorreu o seguinte erro: " + codeResponse + " - " + body
-								+ "\nURL: " + target, Slack.ERROR);
-						System.err.println("Ocorreu o seguinte erro: " + codeResponse + " - " + body);
-					} else {
-						//Para o serviço bigpromo-phantomjs
-//						BetterFlight[] betterFlights = new Gson().fromJson(body, BetterFlight[].class);
-//						float lowerPrice = getFloat(betterFlights[0].getPrc()[0]);
-						
-						//Para o serviço bigpromo-casperjs
-						Flight betterFlight = new Gson().fromJson(body, Flight.class);
-						float lowerPrice = getFloat(betterFlight.getPrice());
-						
-						// TODO Buscar o valor exato
-						double priceWithoutTax = lowerPrice * .9; // Valor aproximado
+									System.out.println("[" + now + "] " + body);
+									System.out.println("[" + now + "] Menor preco sem taxa: " + priceWithoutTax);
 
-						System.out.println("[" + now + "] " + body);
-						System.out.println("[" + now + "] Menor preco sem taxa: " + priceWithoutTax);
+									if (fm.getAlertPrice() > priceWithoutTax) {
+										String msg = "[" + now + "] Comprar voo de " + fm.getFrom() + " para " + fm.getTo()
+												+ " da " + betterFlight.getCia() + " por aproximadamente " + priceWithoutTax
+												+ " no período de " + dtDep + " a " + dtRet;
 
-						if (fltm.getAlertPrice() > priceWithoutTax) {
-							String msg = "[" + now + "] Comprar voo de " + fltm.getFrom() + " para " + fltm.getTo()
-									+ " da " + betterFlight.getCia() + " por aproximadamente " + priceWithoutTax
-									+ " no período de " + fltm.getDtDep() + " a " + fltm.getDtRet();
+										System.out.println("[" + now + "] " + msg);
 
-							System.out.println("[" + now + "] " + msg);
-
-							Slack slack = new Slack();
-							String resp = slack.sendMessage(msg, Slack.ALERT);
-							System.out.println("[" + now + "] Resposta da mensagem enviada pelo Slack: " + resp);
+										Slack slack = new Slack();
+										String resp = slack.sendMessage(msg, Slack.ALERT);
+										System.out.println("[" + now + "] Resposta da mensagem enviada pelo Slack: " + resp);
+									}
+								}
+								
+								try {
+									Thread.sleep(SLEEP_TIME_BETWEEN_FLIGHTS);
+								} catch (InterruptedException e) {
+									new Slack().sendMessage("[" + now + "] Erro: " + e.getMessage(), Slack.ERROR);
+									System.err.println("[" + now + "] Erro: " + e.getMessage());
+								}
+								
+							}
 						}
 					}
 				} catch (Exception e) {
@@ -163,8 +194,8 @@ public class FlightSearchJob implements Runnable {
 	 * 
 	 * @return Lista de voos
 	 */
-	private List<FlightMonitor> checkFlights() {
-		List<FlightMonitor> retorno = new ArrayList<FlightMonitor>();
+	private List<NewFlightMonitor> checkFlights() {
+		List<NewFlightMonitor> retorno = new ArrayList<NewFlightMonitor>();
 		HttpURLConnection connection = null;
 		InputStream is = null;
 		try {
@@ -188,7 +219,7 @@ public class FlightSearchJob implements Runnable {
 				Gson gson = new Gson();
 				JsonObject obj = new JsonParser().parse(response).getAsJsonObject();
 				for (Map.Entry<String, JsonElement> entry : obj.entrySet()) {
-					FlightMonitor flight = gson.fromJson(entry.getValue(), FlightMonitor.class);
+					NewFlightMonitor flight = gson.fromJson(entry.getValue(), NewFlightMonitor.class);
 					retorno.add(flight);
 				}
 			}
