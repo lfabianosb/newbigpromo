@@ -3,6 +3,7 @@ package model;
 public class Flight {
 	private String cia;
 	private String price;
+	private String msg;
 
 	public String getCia() {
 		return cia;
@@ -18,6 +19,14 @@ public class Flight {
 
 	public void setPrice(String price) {
 		this.price = price;
+	}
+
+	public String getMsg() {
+		return msg;
+	}
+
+	public void setMsg(String msg) {
+		this.msg = msg;
 	}
 
 }

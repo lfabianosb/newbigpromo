@@ -63,36 +63,36 @@ public class FlightSearchJob implements Runnable {
 			for (NewFlightMonitor fm : flights) {
 				try {
 					System.out.println("NewFlightMonitor: " + fm);
-					
+
 					DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-					
+
 					LocalDate start = LocalDate.parse(fm.getDtStart(), dtf);
 					LocalDate end = LocalDate.parse(fm.getDtEnd(), dtf);
 					int minDays = fm.getMinDays();
 					int maxDays = fm.getMaxDays();
-					
+
 					if (start.plusDays(maxDays).isAfter(end)) {
 						System.err.println("Intervalo maior que data final");
 						continue;
 					}
-					
+
 					int diff = maxDays - minDays;
-					int period = (int)ChronoUnit.DAYS.between(start, end) - minDays;
-					for(int i=0; i<=period; i++) {
-						for(int j=0; j<=diff; j++) {
+					int period = (int) ChronoUnit.DAYS.between(start, end) - minDays;
+					for (int i = 0; i <= period; i++) {
+						for (int j = 0; j <= diff; j++) {
 							LocalDate newStart = start.plusDays(i);
 							LocalDate newEnd = newStart.plusDays(minDays + j);
-							
+
 							if (!newEnd.isAfter(end)) {
-								
+
 								DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
-								
+
 								String dtDep = newStart.format(formatter);
 								String dtRet = newEnd.format(formatter);
 								String nonStop = fm.isNonStop() ? "NS" : "-";
-								String target = BASE_TARGET + "busca/voos-resultados#/" + fm.getFrom() + "/" + fm.getTo()
-										+ "/RT/" + dtDep + "/" + dtRet + "/-/-/-/" + fm.getAdult() + "/" + fm.getChild() + "/0/"
-										+ nonStop + "/-/-/-";
+								String target = BASE_TARGET + "busca/voos-resultados#/" + fm.getFrom() + "/"
+										+ fm.getTo() + "/RT/" + dtDep + "/" + dtRet + "/-/-/-/" + fm.getAdult() + "/"
+										+ fm.getChild() + "/0/" + nonStop + "/-/-/-";
 
 								System.out.println("target=" + target);
 
@@ -109,39 +109,43 @@ public class FlightSearchJob implements Runnable {
 								String now = getCurrentDateTime();
 
 								if (isError) {
-									new Slack().sendMessage("[" + now + "] Ocorreu o seguinte erro: " + codeResponse + " - " + body
-											+ "\nURL: " + target, Slack.ERROR);
+									if (codeResponse < 500) {
+										Flight flt = new Gson().fromJson(body, Flight.class);
+										new Slack().sendMessage("[" + now + "] Ocorreu o seguinte erro: " + flt.getMsg()
+												+ "\nURL: " + target, Slack.ERROR);
+									} else {
+										new Slack().sendMessage("[" + now + "] Ocorreu o seguinte erro: " + codeResponse
+												+ " - " + body + "\nURL: " + target, Slack.ERROR);
+									}
 									System.err.println("Ocorreu o seguinte erro: " + codeResponse + " - " + body);
 								} else {
 									Flight betterFlight = new Gson().fromJson(body, Flight.class);
 									float lowerPrice = getFloat(betterFlight.getPrice());
-									
-									// TODO Buscar o valor exato
-									double priceWithoutTax = lowerPrice * .9; // Valor aproximado
 
 									System.out.println("[" + now + "] " + body);
-									System.out.println("[" + now + "] Menor preco sem taxa: " + priceWithoutTax);
 
-									if (fm.getAlertPrice() > priceWithoutTax) {
-										String msg = "[" + now + "] Comprar voo de " + fm.getFrom() + " para " + fm.getTo()
-												+ " da " + betterFlight.getCia() + " por aproximadamente " + priceWithoutTax
-												+ " no período de " + dtDep + " a " + dtRet;
+									if (fm.getAlertPrice() > lowerPrice) {
+										String msg = "[" + now + "] Comprar voo de " + fm.getFrom() + " para "
+												+ fm.getTo() + " da " + betterFlight.getCia() + " por " + lowerPrice
+												+ " no período de " + dtDep + " a " + dtRet + " para " + fm.getAdult()
+												+ " adulto(s) e " + fm.getChild() + " criança(s)";
 
 										System.out.println("[" + now + "] " + msg);
 
 										Slack slack = new Slack();
 										String resp = slack.sendMessage(msg, Slack.ALERT);
-										System.out.println("[" + now + "] Resposta da mensagem enviada pelo Slack: " + resp);
+										System.out.println(
+												"[" + now + "] Resposta da mensagem enviada pelo Slack: " + resp);
 									}
 								}
-								
+
 								try {
 									Thread.sleep(SLEEP_TIME_BETWEEN_FLIGHTS);
 								} catch (InterruptedException e) {
 									new Slack().sendMessage("[" + now + "] Erro: " + e.getMessage(), Slack.ERROR);
 									System.err.println("[" + now + "] Erro: " + e.getMessage());
 								}
-								
+
 							}
 						}
 					}
@@ -246,18 +250,12 @@ public class FlightSearchJob implements Runnable {
 	 * @return Cliente HTTP configurado
 	 */
 	private static CloseableHttpClient buildHttpClient() {
-		RequestConfig globalConfig = RequestConfig.custom()
-				.setCookieSpec(CookieSpecs.DEFAULT)
-				.setConnectionRequestTimeout(CONNECTION_TIMEOUT)
-				.setConnectTimeout(CONNECTION_TIMEOUT)
-				.setSocketTimeout(CONNECTION_TIMEOUT)
-				.build();
+		RequestConfig globalConfig = RequestConfig.custom().setCookieSpec(CookieSpecs.DEFAULT)
+				.setConnectionRequestTimeout(CONNECTION_TIMEOUT).setConnectTimeout(CONNECTION_TIMEOUT)
+				.setSocketTimeout(CONNECTION_TIMEOUT).build();
 		CookieStore cookieStore = new BasicCookieStore();
 
-		return HttpClients.custom()
-				.setDefaultRequestConfig(globalConfig)
-				.setDefaultCookieStore(cookieStore)
-				.build();
+		return HttpClients.custom().setDefaultRequestConfig(globalConfig).setDefaultCookieStore(cookieStore).build();
 	}
 
 	/**
