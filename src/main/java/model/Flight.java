@@ -2,7 +2,7 @@ package model;
 
 public class Flight {
 	private String cia;
-	private String price;
+	private float price;
 	private String msg;
 
 	public String getCia() {
@@ -13,11 +13,11 @@ public class Flight {
 		this.cia = cia;
 	}
 
-	public String getPrice() {
+	public float getPrice() {
 		return price;
 	}
 
-	public void setPrice(String price) {
+	public void setPrice(float price) {
 		this.price = price;
 	}
 

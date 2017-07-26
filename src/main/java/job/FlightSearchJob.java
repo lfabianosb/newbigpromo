@@ -34,7 +34,7 @@ import com.google.gson.JsonParser;
 
 import messenger.Slack;
 import model.Flight;
-import model.NewFlightMonitor;
+import model.FlightMonitor;
 
 public class FlightSearchJob implements Runnable {
 
@@ -58,11 +58,11 @@ public class FlightSearchJob implements Runnable {
 
 		int counter = 1;
 		while (true) {
-			List<NewFlightMonitor> flights = checkFlights();
+			List<FlightMonitor> flights = checkFlights();
 			CloseableHttpClient client = null;
-			for (NewFlightMonitor fm : flights) {
+			for (FlightMonitor fm : flights) {
 				try {
-					System.out.println("NewFlightMonitor: " + fm);
+					System.out.println("FlightMonitor: " + fm);
 
 					DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -117,10 +117,11 @@ public class FlightSearchJob implements Runnable {
 										new Slack().sendMessage("[" + now + "] Ocorreu o seguinte erro: " + codeResponse
 												+ " - " + body + "\nURL: " + target, Slack.ERROR);
 									}
-									System.err.println("Ocorreu o seguinte erro: " + codeResponse + " - " + body);
+									System.err.println(
+											"[" + now + "] Ocorreu o seguinte erro: " + codeResponse + " - " + body);
 								} else {
 									Flight betterFlight = new Gson().fromJson(body, Flight.class);
-									float lowerPrice = getFloat(betterFlight.getPrice());
+									float lowerPrice = betterFlight.getPrice();
 
 									System.out.println("[" + now + "] " + body);
 
@@ -142,6 +143,7 @@ public class FlightSearchJob implements Runnable {
 								try {
 									Thread.sleep(SLEEP_TIME_BETWEEN_FLIGHTS);
 								} catch (InterruptedException e) {
+									now = getCurrentDateTime();
 									new Slack().sendMessage("[" + now + "] Erro: " + e.getMessage(), Slack.ERROR);
 									System.err.println("[" + now + "] Erro: " + e.getMessage());
 								}
@@ -150,9 +152,10 @@ public class FlightSearchJob implements Runnable {
 						}
 					}
 				} catch (Exception e) {
+					String now = getCurrentDateTime();
 					Slack slack = new Slack();
-					slack.sendMessage("Erro: " + e.getMessage(), Slack.ERROR);
-					System.err.println("Erro: " + e.getMessage());
+					slack.sendMessage("[" + now + "] Erro: " + e.getMessage(), Slack.ERROR);
+					System.err.println("[" + now + "] Erro: " + e.getMessage());
 				} finally {
 					if (client != null) {
 						try {
@@ -160,14 +163,6 @@ public class FlightSearchJob implements Runnable {
 						} catch (IOException e) {
 						}
 					}
-				}
-
-				try {
-					Thread.sleep(SLEEP_TIME_BETWEEN_FLIGHTS);
-				} catch (InterruptedException e) {
-					String now = getCurrentDateTime();
-					new Slack().sendMessage("[" + now + "] Erro: " + e.getMessage(), Slack.ERROR);
-					System.err.println("[" + now + "] Erro: " + e.getMessage());
 				}
 			}
 
@@ -186,6 +181,7 @@ public class FlightSearchJob implements Runnable {
 			try {
 				Thread.sleep(SLEEP_TIME_BETWEEN_CICLES);
 			} catch (InterruptedException e) {
+				now = getCurrentDateTime();
 				new Slack().sendMessage("[" + now + "] Erro: " + e.getMessage(), Slack.ERROR);
 				System.err.println("[" + now + "] Erro: " + e.getMessage());
 			}
@@ -198,8 +194,8 @@ public class FlightSearchJob implements Runnable {
 	 * 
 	 * @return Lista de voos
 	 */
-	private List<NewFlightMonitor> checkFlights() {
-		List<NewFlightMonitor> retorno = new ArrayList<NewFlightMonitor>();
+	private List<FlightMonitor> checkFlights() {
+		List<FlightMonitor> retorno = new ArrayList<FlightMonitor>();
 		HttpURLConnection connection = null;
 		InputStream is = null;
 		try {
@@ -223,7 +219,7 @@ public class FlightSearchJob implements Runnable {
 				Gson gson = new Gson();
 				JsonObject obj = new JsonParser().parse(response).getAsJsonObject();
 				for (Map.Entry<String, JsonElement> entry : obj.entrySet()) {
-					NewFlightMonitor flight = gson.fromJson(entry.getValue(), NewFlightMonitor.class);
+					FlightMonitor flight = gson.fromJson(entry.getValue(), FlightMonitor.class);
 					retorno.add(flight);
 				}
 			}
@@ -268,24 +264,6 @@ public class FlightSearchJob implements Runnable {
 		LocalDateTime now = LocalDateTime.now(zoneId);
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 		return now.format(formatter);
-	}
-
-	/**
-	 * Converter o preço passado como parâmetro para o tipo float
-	 * 
-	 * @param price
-	 * @return
-	 */
-	private float getFloat(String price) {
-		float retorno = 100000;
-
-		String tmp = price.substring(3);
-		try {
-			retorno = Float.parseFloat(tmp.replace(".", ""));
-		} catch (NumberFormatException e) {
-		}
-
-		return retorno;
 	}
 
 }
